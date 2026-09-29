@@ -1,0 +1,4 @@
+pytest test count: 23 passed
+local commit hash: eb4c0278ea49b2e34274b78eca973f86d0e51327
+
+ProcessMiner AI is a deterministic, CPU-only Python CLI that parses declared CSV event logs, discovers per-case process transitions, and computes stage duration, wait, and queue metrics. It includes deterministic synthetic order-fulfilment and clean-control fixtures, threshold-based bottleneck findings with evidence pointers, transparent rule-based automation scores, stable Markdown and HTML reports, and a 23-test pytest suite. The README documents the honesty boundary, CSV format, architecture, thresholds, and scoring formula; all bundled examples are synthetic and fictional.
