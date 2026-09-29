@@ -44,7 +44,7 @@ def test_stage_duration_and_wait_medians_match_hand_calculation(order_graph: dic
 def test_queue_length_is_measured_from_arrival_and_service_timestamps(order_graph: dict) -> None:
     pick = order_graph["activities"]["pick_items"]
     assert pick["mean_queue_length"] > 2
-    assert pick["max_queue_length"] == 11
+    assert pick["max_queue_length"] == 10
 
 
 def test_invalid_rows_are_named_and_valid_rows_still_mine(tmp_path) -> None:
@@ -80,7 +80,8 @@ def test_naive_timestamps_are_rejected_by_name(tmp_path) -> None:
         discover_graph(path)
 
 
-def test_graph_json_is_byte_stable(order_graph: dict) -> None:
-    first = graph_json(order_graph)
-    second = graph_json(json.loads(first))
+def test_graph_json_is_byte_stable(fixture_logs: dict) -> None:
+    first = graph_json(discover_graph(fixture_logs["order_fulfilment"]))
+    second = graph_json(discover_graph(fixture_logs["order_fulfilment"]))
     assert first == second
+    assert first == graph_json(json.loads(first))

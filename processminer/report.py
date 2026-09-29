@@ -74,17 +74,74 @@ def render_markdown(graph: dict) -> str:
 
 
 def render_html(graph: dict) -> str:
-    markdown = render_markdown(graph)
-    # Keep the HTML renderer dependency-free. Convert the stable report rows into escaped HTML.
-    escaped = html.escape(markdown)
+    bottlenecks = find_bottlenecks(graph)
+    targets = score_targets(graph)
+    summary = graph["input_summary"]
     banner = html.escape(graph.get("honesty_boundary", HONESTY_BOUNDARY))
+    summary_items = "".join(
+        f"<dt>{html.escape(label)}</dt><dd>{value}</dd>"
+        for label, value in (
+            ("Cases", summary["case_count"]),
+            ("Accepted events", summary["events_accepted"]),
+            ("Rejected rows", summary["rows_rejected"]),
+            ("Discovered activities", graph["activity_count"]),
+            ("Observed transitions", len(graph["edges"])),
+        )
+    )
+    edge_rows = "".join(
+        f"<tr><td>{html.escape(edge['from'])}</td><td>{html.escape(edge['to'])}</td><td>{edge['frequency']}</td></tr>"
+        for edge in graph["edges"]
+    ) or '<tr><td colspan="3">No transitions found.</td></tr>'
+    stage_rows = "".join(
+        "<tr>"
+        f"<td>{html.escape(activity)}</td><td>{metrics['event_count']}</td>"
+        f"<td>{_num(metrics['median_duration_minutes'])}</td><td>{_num(metrics['median_wait_minutes'])}</td>"
+        f"<td>{_num(metrics['mean_queue_length'])}</td><td>{metrics['max_queue_length']}</td></tr>"
+        for activity, metrics in graph["activities"].items()
+    )
+    if bottlenecks["findings"]:
+        bottleneck_rows = "".join(
+            "<tr>"
+            f"<td>{html.escape(row['activity'])}</td><td>{row['impact_score']:.3f}</td>"
+            f"<td>{_num(row['median_wait_minutes'])}</td><td>{_num(row['mean_queue_length'])}</td>"
+            f"<td>{row['max_queue_length']}</td><td><code>{html.escape(row['evidence_pointer'])}</code></td></tr>"
+            for row in bottlenecks["findings"]
+        )
+    else:
+        bottleneck_rows = '<tr><td colspan="6">No stages met the documented wait or queue thresholds.</td></tr>'
+    target_rows = "".join(
+        "<tr>"
+        f"<td>{row['rank']}</td><td>{html.escape(row['activity'])}</td><td>{row['score']:.4f}</td>"
+        f"<td>{row['inputs']['repetition']:.4f}</td><td>{row['inputs']['manual_actor_share']:.3f}</td>"
+        f"<td>{row['inputs']['duration_factor']:.4f}</td><td>{row['inputs']['rule_suitability']:.1f}</td>"
+        f"<td><code>graph.activities.{html.escape(row['activity'])}</code></td></tr>"
+        for row in targets["ranking"]
+    )
+    rejected_rows = "".join(f"<li><code>{html.escape(issue)}</code></li>" for issue in summary["validation_errors"])
+    rejected_section = f"<h2>Rejected row details</h2><ul>{rejected_rows}</ul>" if rejected_rows else ""
     return (
         "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         "<title>ProcessMiner AI report</title><style>body{font:16px/1.55 system-ui,sans-serif;"
-        "max-width:1100px;margin:2rem auto;padding:0 1rem;color:#18212f}"
+        "max-width:1200px;margin:2rem auto;padding:0 1rem;color:#18212f}"
         ".honesty{padding:1rem;background:#fff4cc;border:1px solid #d7aa32;font-weight:600}"
-        "pre{white-space:pre-wrap;background:#f5f7fa;padding:1rem;border-radius:8px}</style>"
+        "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}th,td{padding:.55rem .7rem;"
+        "border-bottom:1px solid #d9e0e8;text-align:left}th{background:#f3f6fa}code{overflow-wrap:anywhere}"
+        "</style>"
         f"</head><body><h1>ProcessMiner AI report</h1><p class=\"honesty\">HONESTY BOUNDARY: {banner}</p>"
-        f"<pre>{escaped}</pre></body></html>\n"
+        f"<h2>Process summary</h2><dl>{summary_items}</dl>"
+        "<h2>Discovered graph</h2><p>Edges are ordered per case by event start time. Frequencies count observed adjacent transitions.</p>"
+        "<table><thead><tr><th>From</th><th>To</th><th>Frequency</th></tr></thead><tbody>"
+        f"{edge_rows}</tbody></table>"
+        "<h2>Stage timing and queues</h2><table><thead><tr><th>Activity</th><th>Events</th><th>Median duration (min)</th>"
+        "<th>Median wait (min)</th><th>Mean queue</th><th>Max queue</th></tr></thead><tbody>"
+        f"{stage_rows}</tbody></table>"
+        "<h2>Bottleneck findings</h2><p>Thresholds: median wait at least 10 minutes or mean queue length at least 2."
+        " Findings sort by normalized threshold impact.</p><table><thead><tr><th>Activity</th><th>Impact</th>"
+        "<th>Median wait (min)</th><th>Mean queue</th><th>Max queue</th><th>Evidence pointer</th></tr></thead><tbody>"
+        f"{bottleneck_rows}</tbody></table>"
+        f"<h2>Ranked automation targets</h2><p>Formula: <code>{html.escape(targets['formula'])}</code></p>"
+        "<table><thead><tr><th>Rank</th><th>Activity</th><th>Score</th><th>Repetition</th><th>Manual share</th>"
+        "<th>Duration factor</th><th>Suitability</th><th>Evidence pointer</th></tr></thead><tbody>"
+        f"{target_rows}</tbody></table>{rejected_section}</body></html>\n"
     )

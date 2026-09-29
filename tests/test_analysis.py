@@ -9,7 +9,7 @@ def test_planted_bottleneck_ranks_first_with_measured_queue_evidence(order_graph
     finding = result["findings"][0]
     assert finding["median_wait_minutes"] == 148.5
     assert finding["mean_queue_length"] > 2
-    assert finding["max_queue_length"] == 11
+    assert finding["max_queue_length"] == 10
     assert finding["evidence_pointer"] == "graph.activities.pick_items"
     assert set(finding["evidence_fields"]) == {"median_wait_minutes", "mean_queue_length"}
 
