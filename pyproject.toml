@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "processminer-ai"
+version = "1.0.0"
+description = "Deterministic process mining for synthetic event log demonstrations"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+processminer = "processminer.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["processminer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
